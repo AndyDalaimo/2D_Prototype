@@ -18,11 +18,11 @@
     11/11/2022 - Andrew Dalaimo - Added Health bar for player. Need to add gameover state for after 
     the player loses all HP. (in hitPlayer within Enemy Class)
     13/11/2022 - Andrew Dalaimo - Finished stage 3 and win state. Updated shield/bubble mechanic. 
+    14/11/2022 - Andrew Dalaimo - After play testing, update shield colliders with platforms, 
+    reworked stage 3. 
 
-    TODO -- The shield is created and spawned. Add collider with player and enemy_attack 
-    to deflect attack back at enemy. Make shield spawn randomly??
-    Fix Animations. Add platforms with new assets.
-    Create Enemy states 1-3. Add in some sort of Pick Up in this GAME!!
+    TODO -- 
+    Add platforms with new assets??
 
     @author Andrew Dalaimo
 */
@@ -106,7 +106,6 @@ function create()
     platforms = this.physics.add.staticGroup();
     staff = this.physics.add.staticGroup();
     
-
     let phaseOneText = new Phaser.GameObjects.Text(this, 640, 350, 'Phase 1', 100, 
            { font: "Press Start 2P" });
     this.add.existing(phaseOneText);
@@ -264,7 +263,7 @@ function update()
         player.anims.play('idle');
     }
 
-    // FIXME - find way to set other animations false when jumping
+    // Jump
     if (keySpace.isDown && player.body.touching.down && !hasShield)
     {
         player.setVelocityY(-500);
@@ -275,9 +274,8 @@ function update()
         player.anims.play('jump', true);
     }
 
-    // TODO - Create Enemy state 1-3
+    // play Enemy animation
     enemy.anims.play('enemyIdle', true);
-    
 
     // Fire with mouse. Using some trig, grab the angle between mouse and player
     // position, then set velocity. 
@@ -347,6 +345,7 @@ function update()
 class Enemy {
     projectiles;
     shield;
+    shieldPlatformCollider;
     state = 1;
     enemy_attack;
     shields;
@@ -395,6 +394,7 @@ class Enemy {
         {
             this.state++;
             hasStaff = false;
+            
             // Reset position of PLayer and Enemy 
             player.x = 1200;
             player.y = 610;
@@ -428,7 +428,6 @@ class Enemy {
                 fadeOut(this);
                 player.clearTint();
 
-
                 // Get angle (in radians) of enemy position and player position
                 let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
                 // Set velocity from this angle, convert radians into Degrees for function
@@ -446,12 +445,12 @@ class Enemy {
             {
                 if (this.shields.countActive() < this.shields.maxSize)
                 {
-                    shield = this.shields.create(Phaser.Math.Between(0, 1280), 100, 'blueShield').setScale(.2).refreshBody();
+                    shield = this.shields.create(Phaser.Math.Between(0, 1280), 260, 'blueShield').setScale(.2).refreshBody();
                     shield.setBounce(0);
                     shield.setVelocityY(10);
                     shield.setCollideWorldBounds(true);
                     this.game.physics.add.collider(shield, ground);
-                    // this.game.physics.add.collider(shield, platforms);
+                    this.game.physics.add.collider(shield, platforms);
                     this.game.physics.add.overlap(shield, player, collectShield, null, this);
                 }
             }
@@ -460,6 +459,7 @@ class Enemy {
         else if (x == 3)
         {
             this.state++;
+            console.log("Curent Stage: " + this.state);
             // resume the physics after new state has been set
             platforms.clear(true, true);
             enemy.alpha = 1;
@@ -468,23 +468,33 @@ class Enemy {
             console.log("enemy has now entered stage: " + x);
             platforms.create(100, 130, 'platforms').setScale(.5).refreshBody();
             platforms.create(1180, 130, 'platforms').setScale(.5).refreshBody();
-            platforms.create(100, 400, 'platforms').setScale(.5).refreshBody();
-            platforms.create(1180, 400, 'platforms').setScale(.5).refreshBody();
+            platforms.create(640, 300, 'platforms').setScale(.5).refreshBody();
             enemy.x = 50;
             enemy.y = 300;
 
+            // Possible points the staff can spawn
+            let staffSpawn = [[1180, 90], [100, 90], [640, 260]]; 
+            
             projectiles = this.game.physics.add.group();
             projectiles.maxSize = 4;
 
-            let timer = this.game.time.delayedCall(5000, spawnStaff, [], this);
+            // Player loses staff when taking damage. Staff will spawn in one of three places
+            let timer = this.game.time.addEvent({ delay: 3000, 
+                callback: spawnStaff, callbackScope: this, loop: true });
             function spawnStaff()
             {
-                staff.create(1180, 90, 'blueStaff').setScale(.2).refreshBody();
+                if (staff.countActive(true) < 1)
+                {
+                    // Spawn Staff in one of three spots randomly after player loses it. (on damage)
+                    let point = staffSpawn[Math.floor(Math.random() * staffSpawn.length)]
+                    staff.create(point[0], point[1], 'blueStaff').setScale(.2).refreshBody();
+                }
+                // staff.create(1180, 90, 'blueStaff').setScale(.2).refreshBody();
             }
             timer_EnemySpawn = this.game.time.addEvent({ delay: 3000, 
                 callback: onEvent, callbackScope: this, loop: true });
             this.game.physics.add.collider(shield, ground);
-            this.game.physics.add.collider(shield, platforms);
+            
             enemy.setVelocityX(300);    
             function onEvent()
             {
@@ -532,8 +542,13 @@ class Enemy {
             enemy_attack.destroy();
             explosion.anims.play('explode');
             player_health++;
+            if (this.state == 4)
+            {
+                hasStaff = false;
+            }
             playerHP.decreasePlayer(15);
             player.setTint(0xff0000);
+
             let timer = this.game.time.delayedCall(1000, onEvent, [], this);
             function onEvent()
             {
@@ -552,9 +567,10 @@ class Enemy {
                     timer_EnemySpawn.destroy();
                     timer_shieldSpawn.destroy();
                 }
+
+                // GameOver
                 projectiles.clear(true, true);
                 this.game.physics.pause();
-                // GameOver
                 let gameOverText = new Phaser.GameObjects.Text(this.game, 600, 350, 'Game Over', 50, 
                { font: "Press Start 2P" });
                 this.game.add.existing(gameOverText);
@@ -645,7 +661,6 @@ class HealthBar {
     playerDraw()
     {
         this.playerBar.clear();
-
         
         // Background
         this.enemyBar.fillStyle(0x00ff00);
@@ -726,7 +741,8 @@ function destroy(attack, hit)
 function collectStaff(player, staff)
 {
     hasStaff = true;
-    staff.disableBody(true, true);
+    // staff.disableBody(true, true);
+    staff.destroy();
 }
 
 // Player collects shield to pary enemy attacks 
@@ -754,7 +770,7 @@ function parry(enemy_attack, shield)
     enemy_attack.setVelocityX(velo.x * 20);
     enemy_attack.setVelocityY(velo.y * 20);
     shield.setTint(0xff0000);
-    // this.game.physics.add.collider(enemy_attack, enemy, parryDamage, null, this);\
+
     if (this.state == 3)
     {
         this.game.physics.add.collider(enemy_attack, enemy, parryDamage, null, this);
