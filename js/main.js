@@ -294,7 +294,7 @@ function update()
             player_attack.setScale(0.5);
 
             // Player Hits enemy (collider not activated while Enemy is fading in and out)
-            if (enemy.alpha > 0.5)
+            if (enemy.alpha > 0.1)
             {
                 this.physics.add.collider(player_attack, enemy, hitEnemy, null, this);
             }
@@ -347,6 +347,7 @@ function update()
 */
 class Enemy {
     projectiles;
+    projectile;
     shield;
     shieldPlatformCollider;
     state = 1;
@@ -480,7 +481,7 @@ class Enemy {
             
             projectiles = this.game.physics.add.group();
             projectiles.maxSize = 4;
-
+            
             // Player loses staff when taking damage. Staff will spawn in one of three places
             let timer = this.game.time.addEvent({ delay: 3000, 
                 callback: spawnStaff, callbackScope: this, loop: true });
@@ -502,30 +503,34 @@ class Enemy {
             function onEvent()
             {
                 fadeOut(this);
+                // Enemy Roams
                 if (enemy.x > 1200)
                 {
                     enemy.setVelocityX(-300);
                 } else if (enemy.x < 150) {
                     enemy.setVelocityX(300);
+                } else 
+                {
+                    enemy.setVelocityX(Phaser.Math.Between(-400, 400))
                 }
-
+                
                 // Get angle (in radians) of enemy position and player position
                 let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
                 // Set velocity from this angle, convert radians into Degrees for function
                 let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
                 if (projectiles.countActive(true) < projectiles.maxSize)
                 {
-                    let projectile = projectiles.create(enemy.x, enemy.y, 'enemyProjectile');
+                    this.projectile = projectiles.create(enemy.x, enemy.y, 'enemyProjectile');
                     console.log(projectiles.countActive(true));
-                    projectile.setBounce(1);
-                    projectile.setVelocityY(Phaser.Math.Between(-800, 800), 10);
-                    projectile.setVelocityX(Phaser.Math.Between(-800, 800), 10);
-                    projectile.setGravity(0,-1000);
-                    projectile.setCollideWorldBounds(true);
-                    this.game.physics.add.collider(projectile, ground);
-                    this.game.physics.add.collider(projectile, platforms);
-                    this.game.physics.add.collider(projectile, shield, parry, null, this);
-                    this.game.physics.add.collider(projectile, player, hitPlayer, null, this);
+                    this.projectile.setBounce(1);
+                    this.projectile.setVelocityY(Phaser.Math.Between(-800, 800), 10);
+                    this.projectile.setVelocityX(Phaser.Math.Between(-800, 800), 10);
+                    this.projectile.setGravity(0,-1000);
+                    this.projectile.setCollideWorldBounds(true);
+                    this.game.physics.add.collider(this.projectile, ground);
+                    this.game.physics.add.collider(this.projectile, platforms);
+                    this.game.physics.add.collider(this.projectile, shield, parry, null, this);
+                    this.game.physics.add.collider(this.projectile, player, hitPlayer, null, this);
                 } 
             }
         
