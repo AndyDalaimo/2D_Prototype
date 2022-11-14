@@ -293,8 +293,11 @@ function update()
             player_attack = this.physics.add.sprite(player.x, player.y, 'blueFire');
             player_attack.setScale(0.5);
 
-            // Player Hits enemy
-            this.physics.add.collider(player_attack, enemy, hitEnemy, null, this);
+            // Player Hits enemy (collider not activated while Enemy is fading in and out)
+            if (enemy.alpha > 0.5)
+            {
+                this.physics.add.collider(player_attack, enemy, hitEnemy, null, this);
+            }
 
             // Destroy attack sprite if it hits platform
             this.physics.add.collider(player_attack, ground, destroy, null, this);
@@ -469,8 +472,8 @@ class Enemy {
             platforms.create(100, 130, 'platforms').setScale(.5).refreshBody();
             platforms.create(1180, 130, 'platforms').setScale(.5).refreshBody();
             platforms.create(640, 300, 'platforms').setScale(.5).refreshBody();
-            enemy.x = 50;
-            enemy.y = 300;
+            enemy.x = 640;
+            enemy.y = 260;
 
             // Possible points the staff can spawn
             let staffSpawn = [[1180, 90], [100, 90], [640, 260]]; 
@@ -489,8 +492,8 @@ class Enemy {
                     let point = staffSpawn[Math.floor(Math.random() * staffSpawn.length)]
                     staff.create(point[0], point[1], 'blueStaff').setScale(.2).refreshBody();
                 }
-                // staff.create(1180, 90, 'blueStaff').setScale(.2).refreshBody();
             }
+
             timer_EnemySpawn = this.game.time.addEvent({ delay: 3000, 
                 callback: onEvent, callbackScope: this, loop: true });
             this.game.physics.add.collider(shield, ground);
@@ -507,16 +510,16 @@ class Enemy {
                 }
 
                 // Get angle (in radians) of enemy position and player position
-                let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
+                //let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
                 // Set velocity from this angle, convert radians into Degrees for function
-                let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
+                //let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
                 if (projectiles.countActive(true) < projectiles.maxSize)
                 {
-                    let projectile = projectiles.create(enemy.x+5, enemy.y-5, 'enemyProjectile');
+                    let projectile = projectiles.create(enemy.x, enemy.y, 'enemyProjectile');
                     console.log(projectiles.countActive(true));
                     projectile.setBounce(1);
-                    projectile.setVelocityY(velo.y * 10);
-                    projectile.setVelocityX(velo.x * 10);
+                    projectile.setVelocityY(Phaser.Math.Between(-800, 800));
+                    projectile.setVelocityX(Phaser.Math.Between(-800, 800));
                     projectile.setGravity(0,-1000);
                     projectile.setCollideWorldBounds(true);
                     this.game.physics.add.collider(projectile, ground);
@@ -684,6 +687,7 @@ function hitEnemy(attack, enemy)
     state = new Enemy(null, this, player, enemy, ground);
     attack.destroy();
     enemy_health++;
+
     // Decraese healthbar UI
     state.hp.decreaseEnemy(30 * enemy_health);
     if (enemy_health == 20)
@@ -759,13 +763,14 @@ function collectShield(shield)
 */
 function parry(enemy_attack, shield)
 {   
+    let tempPoint = [enemy_attack.x, enemy_attack.y];
     enemy_attack.destroy();
     console.log("Parry");
     // Get angle (in radians) of enemy position and player position
     let angle = Math.atan2((enemy.y-player.y), (enemy.x-player.x));
     // Set velocity from this angle, convert radians into Degrees for function
     let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
-    enemy_attack = this.game.physics.add.sprite(shield.x, shield.y, 'enemyProjectile');
+    enemy_attack = this.game.physics.add.sprite(tempPoint[0], tempPoint[1], 'enemyProjectile');
     enemy_attack.body.setGravity(0,-1000); 
     enemy_attack.setVelocityX(velo.x * 20);
     enemy_attack.setVelocityY(velo.y * 20);
@@ -820,6 +825,7 @@ function parryDamage(enemy_attack, enemy)
         let timedEvent = this.game.time.delayedCall(3000, onEvent, [], this);
         function onEvent()
         {
+            enemy_attack.destroy();
             phaseThreeText.destroy();
             let state_Three = new Enemy(3, this.game, player, enemy, null);
             state_Three.setState(3);
