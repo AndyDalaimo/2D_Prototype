@@ -510,16 +510,16 @@ class Enemy {
                 }
 
                 // Get angle (in radians) of enemy position and player position
-                //let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
+                let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
                 // Set velocity from this angle, convert radians into Degrees for function
-                //let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
+                let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
                 if (projectiles.countActive(true) < projectiles.maxSize)
                 {
                     let projectile = projectiles.create(enemy.x, enemy.y, 'enemyProjectile');
                     console.log(projectiles.countActive(true));
                     projectile.setBounce(1);
-                    projectile.setVelocityY(Phaser.Math.Between(-800, 800));
-                    projectile.setVelocityX(Phaser.Math.Between(-800, 800));
+                    projectile.setVelocityY(Phaser.Math.Between(-800, 800), 10);
+                    projectile.setVelocityX(Phaser.Math.Between(-800, 800), 10);
                     projectile.setGravity(0,-1000);
                     projectile.setCollideWorldBounds(true);
                     this.game.physics.add.collider(projectile, ground);
