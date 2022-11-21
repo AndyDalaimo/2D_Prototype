@@ -423,6 +423,7 @@ class Enemy {
 
             timer_EnemySpawn = this.game.time.addEvent({ delay: 3500, 
                 callback: onEvent, callbackScope: this, loop: true });
+            // Timed event to spawn shield when player does not have one available or is destroyed
             timer_shieldSpawn = this.game.time.addEvent({ delay: 4000, 
                 callback: spawnShield, callbackScope: this, loop: true });
                        
@@ -444,7 +445,7 @@ class Enemy {
                 this.game.physics.add.collider(this.enemy_attack, player, hitPlayer, null, this);   
             }
 
-            // TODO -- Test whether the shields should interact with the platofrms or not
+            // Spawn shield for the player only if they do not have one available
             function spawnShield()
             {
                 if (this.shields.countActive() < this.shields.maxSize)
@@ -503,6 +504,7 @@ class Enemy {
             function onEvent()
             {
                 fadeOut(this);
+                
                 // Enemy Roams
                 if (enemy.x > 1200)
                 {
@@ -557,6 +559,7 @@ class Enemy {
             playerHP.decreasePlayer(15);
             player.setTint(0xff0000);
 
+            // A timer that will clear the red tint from the player after they are damaged
             let timer = this.game.time.delayedCall(1000, onEvent, [], this);
             function onEvent()
             {
