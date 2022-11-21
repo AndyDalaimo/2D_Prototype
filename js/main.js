@@ -347,7 +347,7 @@ function update()
 */
 class Enemy {
     projectiles;
-    projectile;
+    projectile = [];
     shield;
     shieldPlatformCollider;
     state = 1;
@@ -470,6 +470,7 @@ class Enemy {
             enemy.alpha = 1;
             this.game.physics.resume();
             timer_EnemySpawn.destroy();
+            timer_shieldSpawn.destroy();
             console.log("enemy has now entered stage: " + x);
             platforms.create(100, 130, 'platforms').setScale(.5).refreshBody();
             platforms.create(1180, 130, 'platforms').setScale(.5).refreshBody();
@@ -482,6 +483,9 @@ class Enemy {
             
             projectiles = this.game.physics.add.group();
             projectiles.maxSize = 4;
+            let shield = [];
+            this.shields = this.game.physics.add.group();
+            this.shields.maxSize = 1;
             
             // Player loses staff when taking damage. Staff will spawn in one of three places
             let timer = this.game.time.addEvent({ delay: 3000, 
@@ -499,6 +503,10 @@ class Enemy {
             timer_EnemySpawn = this.game.time.addEvent({ delay: 3000, 
                 callback: onEvent, callbackScope: this, loop: true });
             this.game.physics.add.collider(shield, ground);
+
+            // Timed event to spawn shield when player does not have one available or is destroyed
+            timer_shieldSpawn = this.game.time.addEvent({ delay: 4000, 
+                callback: spawnShield, callbackScope: this, loop: true });
             
             enemy.setVelocityX(300);    
             function onEvent()
@@ -522,19 +530,34 @@ class Enemy {
                 let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
                 if (projectiles.countActive(true) < projectiles.maxSize)
                 {
-                    this.projectile = projectiles.create(enemy.x, enemy.y, 'enemyProjectile');
+                    this.projectile.push(projectiles.create(enemy.x, enemy.y, 'enemyProjectile'));
                     console.log(projectiles.countActive(true));
-                    this.projectile.setBounce(1);
-                    this.projectile.setVelocityY(Phaser.Math.Between(-800, 800), 10);
-                    this.projectile.setVelocityX(Phaser.Math.Between(-800, 800), 10);
-                    this.projectile.setGravity(0,-1000);
-                    this.projectile.setCollideWorldBounds(true);
-                    this.game.physics.add.collider(this.projectile, ground);
-                    this.game.physics.add.collider(this.projectile, platforms);
-                    this.game.physics.add.collider(this.projectile, shield, parry, null, this);
-                    this.game.physics.add.collider(this.projectile, player, hitPlayer, null, this);
+                    this.projectile[this.projectile.length-1].setBounce(1);
+                    this.projectile[this.projectile.length-1].setVelocityY(Phaser.Math.Between(-800, 800), 10);
+                    this.projectile[this.projectile.length-1].setVelocityX(Phaser.Math.Between(-800, 800), 10);
+                    this.projectile[this.projectile.length-1].setGravity(0,-1000);
+                    this.projectile[this.projectile.length-1].setCollideWorldBounds(true);
+                    this.game.physics.add.collider(this.projectile[this.projectile.length-1], ground);
+                    this.game.physics.add.collider(this.projectile[this.projectile.length-1], platforms);
+                    this.game.physics.add.collider(this.projectile[this.projectile.length-1], shield, parry, null, this);
+                    this.game.physics.add.collider(this.projectile[this.projectile.length-1], player, hitPlayer, null, this);
                 } 
             }
+
+             // Spawn shield for the player only if they do not have one available
+             function spawnShield()
+             {
+                 if (this.shields.countActive() < this.shields.maxSize)
+                 {
+                     shield.push(this.shields.create(Phaser.Math.Between(0, 1280), 260, 'blueShield').setScale(.2).refreshBody());
+                     shield[shield.length-1].setBounce(0);
+                     shield[shield.length-1].setVelocityY(10);
+                     shield[shield.length-1].setCollideWorldBounds(true);
+                     this.game.physics.add.collider(shield[shield.length-1], ground);
+                     this.game.physics.add.collider(shield[shield.length-1], platforms);
+                     this.game.physics.add.overlap(shield[shield.length-1], player, collectShield, null, this);
+                 }
+             }
         
         } else if (x == 4)
         {
