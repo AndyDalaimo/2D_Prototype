@@ -16,4 +16,4 @@ NOTES ->
 •	In each phase, the player starts WITHOUT their staff
 •	When collecting the blue bubble, player’s gravity is affected, and parry mechanic activated 
 
-Select the index.html file to play
+Link to the Game -> https://andrewdalaimo.nuacomputerscience.co.uk/2DPrototypeGame/
