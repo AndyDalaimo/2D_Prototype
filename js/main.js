@@ -857,6 +857,7 @@ function parryDamage(enemy_attack, enemy)
         function onEvent()
         {
             enemy_attack.destroy();
+            shield.destroy();
             phaseThreeText.destroy();
             let state_Three = new Enemy(3, this.game, player, enemy, null);
             state_Three.setState(3);
