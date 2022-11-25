@@ -20,9 +20,7 @@
     13/11/2022 - Andrew Dalaimo - Finished stage 3 and win state. Updated shield/bubble mechanic. 
     14/11/2022 - Andrew Dalaimo - After play testing, update shield colliders with platforms, 
     reworked stage 3. 
-
-    TODO -- 
-    Add platforms with new assets??
+    20/11/2022 - Andrew Dalaimo - Shield colliders fixed in Stage 3. Now recognize all projectiles.
 
     @author Andrew Dalaimo
 */
@@ -92,7 +90,6 @@ function preload()
     this.load.image('enemyProjectile', 'assets/enemyProjectile.png');
     this.load.image('blueShield', 'assets/spr_shield.png');
     this.load.spritesheet('explosion', 'assets/Explosion.png', { frameWidth: 96, frameHeight: 96});
-    // To be changed later
     this.load.image('platforms', 'assets/platform.png');
 }
 
@@ -106,6 +103,7 @@ function create()
     platforms = this.physics.add.staticGroup();
     staff = this.physics.add.staticGroup();
     
+    // Text indicating Phase 1. Will delete itself after delayed timer.
     let phaseOneText = new Phaser.GameObjects.Text(this, 640, 350, 'Phase 1', 100, 
            { font: "Press Start 2P" });
     this.add.existing(phaseOneText);
@@ -114,6 +112,7 @@ function create()
     {
         phaseOneText.destroy();
     }
+
     // Acts as ground for player
     ground.create(150, 750, 'ground');
     ground.create(450, 750, 'ground');
@@ -150,10 +149,11 @@ function create()
     this.physics.add.collider(enemy, platforms);
     this.physics.add.collider(player, platforms);
     this.physics.add.overlap(player, enemy);
-    // Set Physics overlap for Player and Staff
+
+    // Set Physics overlap for Player and Staff. Sets hasStaff to true. 
     this.physics.add.overlap(player, staff, collectStaff, null, this);
 
-    // Set Player Animations
+    // Set Player Animations for all movements
 
     this.anims.create({
         key: 'jump',
@@ -211,7 +211,7 @@ function create()
         repeat: -1
     });
 
-    // Blue Fire
+    // Blue Fire / attack animation
     this.anims.create({
         key: 'blueFire',
         frames: this.anims.generateFrameNumbers('blue', { start: 0, end: 60 }),
@@ -230,7 +230,8 @@ function create()
 
 function update()
 {
-    // Move Player with Controls
+    // Move Player with Controls and set animations according to direction and 
+    // if the player is touching the ground or not
     if (keyA.isDown)
     {
         if (!player.body.touching.down)
@@ -251,7 +252,6 @@ function update()
         }
         else 
         {
-            // Move right animation
             player.anims.play('walkRight', true);
         }
         player.setVelocityX(300);
@@ -320,6 +320,7 @@ function update()
         }
     }
 
+    // if player collects shield, gravity is negated and player will float 
     if (hasShield)
     {
         player.setGravity(0, -1200);
@@ -371,10 +372,12 @@ class Enemy {
     {
         if (x == 1)
         {
+            // Group of enemy attacks will be created and destroyed within state
             projectiles = this.game.physics.add.group();
             projectiles.maxSize = 3;
             console.log("New Enemy state: " + x);
-            // Creates a timed event to shoot every 1 Second
+            // Creates a timed event to shoot every 2 Seconds in a random direction. Projectile 
+            // will bounce on ground and pass through platforms
             timer_EnemyAttack = this.game.time.addEvent({ delay: 2000, 
                 callback: onEvent, callbackScope: this, loop: true });
 
@@ -396,21 +399,24 @@ class Enemy {
         } 
         else if (x == 2)
         {
+            // Player restarts phase without staff
             this.state++;
             hasStaff = false;
             
-            // Reset position of PLayer and Enemy 
+            // Reset position of Player and Enemy 
             player.x = 1200;
             player.y = 610;
             enemy.x = 50;
             enemy.y = 230;
 
+            // Group of shields (1). To be dropped after it is destroyed. Repeating in timed event. 
             this.shields = this.game.physics.add.group();
             this.shields.maxSize = 1;
 
-            // Clear projectiles and platforms left on sreen
+            // Clear projectiles and platforms left on screen
             projectiles.clear(true, true);
             platforms.clear(true, true);
+            // Create new platforms for second phase
             platforms.create(650, 360, 'platforms').setScale(0.5).refreshBody();
             platforms.create(120, 280, 'platforms').setScale(1).refreshBody();
             platforms.create(320, 450, 'platforms').setScale(0.5).refreshBody();
@@ -418,9 +424,11 @@ class Enemy {
             platforms.create(640, 560, 'platforms').setScale(1).refreshBody();
             platforms.create(1160, 280, 'platforms').setScale(1).refreshBody();
 
+            // Destroy event from last phase 
             timer_EnemyAttack.destroy();
             console.log("enemy has now entered stage: " + x);
 
+            // New event for second form of enemy attacks
             timer_EnemySpawn = this.game.time.addEvent({ delay: 3500, 
                 callback: onEvent, callbackScope: this, loop: true });
             // Timed event to spawn shield when player does not have one available or is destroyed
@@ -430,6 +438,8 @@ class Enemy {
             function onEvent()
             {
                 this.game.physics.resume();
+                // Enemy will fade in and out and appear at different spawn points across maps. Then
+                // shoot projectile at player when fading in. Projectiles will track player. 
                 fadeOut(this);
                 player.clearTint();
 
@@ -467,11 +477,16 @@ class Enemy {
             console.log("Curent Stage: " + this.state);
             // resume the physics after new state has been set
             platforms.clear(true, true);
+            // A check to make sure enemys alpha is set back to 1
             enemy.alpha = 1;
             this.game.physics.resume();
+
+            // Destroy previous stages timers
             timer_EnemySpawn.destroy();
             timer_shieldSpawn.destroy();
             console.log("enemy has now entered stage: " + x);
+
+            // Create new phases platforms and reposition enemy
             platforms.create(100, 130, 'platforms').setScale(.5).refreshBody();
             platforms.create(1180, 130, 'platforms').setScale(.5).refreshBody();
             platforms.create(640, 300, 'platforms').setScale(.5).refreshBody();
@@ -500,6 +515,9 @@ class Enemy {
                 }
             }
 
+            // Enemy will spawn in various places on map and fade in and out. Shooting 
+            // Projectiles in random areas on map for player to dodge. Enemy will only 
+            // take damage if alpha is > 0.3
             timer_EnemySpawn = this.game.time.addEvent({ delay: 3000, 
                 callback: onEvent, callbackScope: this, loop: true });
             this.game.physics.add.collider(shield, ground);
@@ -524,10 +542,8 @@ class Enemy {
                     enemy.setVelocityX(Phaser.Math.Between(-400, 400))
                 }
                 
-                // Get angle (in radians) of enemy position and player position
-                let angle = Math.atan2((player.y-enemy.y), (player.x-enemy.x));
-                // Set velocity from this angle, convert radians into Degrees for function
-                let velo = this.game.physics.velocityFromAngle((angle*180)/Math.PI, 75);
+                // Only shoot new projectile if there are < 4 on screen. Projectiles will bounce on ground 
+                // and platforms. Will destroy shields on contact. 
                 if (projectiles.countActive(true) < projectiles.maxSize)
                 {
                     this.projectile.push(projectiles.create(enemy.x, enemy.y, 'enemyProjectile'));
@@ -544,20 +560,20 @@ class Enemy {
                 } 
             }
 
-             // Spawn shield for the player only if they do not have one available
-             function spawnShield()
-             {
-                 if (this.shields.countActive() < this.shields.maxSize)
-                 {
-                     shield.push(this.shields.create(Phaser.Math.Between(0, 1280), 260, 'blueShield').setScale(.2).refreshBody());
-                     shield[shield.length-1].setBounce(0);
-                     shield[shield.length-1].setVelocityY(10);
-                     shield[shield.length-1].setCollideWorldBounds(true);
-                     this.game.physics.add.collider(shield[shield.length-1], ground);
-                     this.game.physics.add.collider(shield[shield.length-1], platforms);
-                     this.game.physics.add.overlap(shield[shield.length-1], player, collectShield, null, this);
-                 }
-             }
+            // Spawn shield for the player only if they do not have one available
+            function spawnShield()
+            {
+                if (this.shields.countActive() < this.shields.maxSize)
+                {
+                    shield.push(this.shields.create(Phaser.Math.Between(0, 1280), 260, 'blueShield').setScale(.2).refreshBody());
+                    shield[shield.length-1].setBounce(0);
+                    shield[shield.length-1].setVelocityY(10);
+                    shield[shield.length-1].setCollideWorldBounds(true);
+                    this.game.physics.add.collider(shield[shield.length-1], ground);
+                    this.game.physics.add.collider(shield[shield.length-1], platforms);
+                    this.game.physics.add.overlap(shield[shield.length-1], player, collectShield, null, this);
+                }
+            }
         
         } else if (x == 4)
         {
@@ -566,10 +582,10 @@ class Enemy {
             this.game.physics.pause();
         }
 
-        // TODO -- Add Game over state when player dies
+        // Hit player function will destroy projectile and play animation. Decrease the health of the player and 
+        // Create a game over message if players health is depleted. 
         function hitPlayer(enemy_attack, player)
         {
-            // TESTING - need to declare variables outisde of function
             let explosion = this.game.physics.add.sprite((player.x /enemy_attack.x) * enemy_attack.x, 
                     (player.y /enemy_attack.y) * enemy_attack.y, 'explosion');
             enemy_attack.destroy();
@@ -579,6 +595,7 @@ class Enemy {
             {
                 hasStaff = false;
             }
+            // This calls HealthBar class to redraw health bar with new, lower amount 
             playerHP.decreasePlayer(15);
             player.setTint(0xff0000);
 
@@ -589,6 +606,7 @@ class Enemy {
                 player.clearTint();
             }
             console.log("Player Health: " + player_health);
+            // if player_health == 10 -> game over. 
             if (player_health == 10) // Set lower for Testing. 10 is total amount for health bar. 
             {
                 if (this.state == 2)
@@ -710,9 +728,8 @@ class HealthBar {
 
 /*
     Decrease health of enemy when player hits enemy with attack.  
-    Destroy Player Attack sprited
+    Destroy Player Attack sprite
 */
-// TODO -- call Enemy class w/ enemy_state to change behavior
 function hitEnemy(attack, enemy)
 {
     state = new Enemy(null, this, player, enemy, ground);
@@ -726,7 +743,9 @@ function hitEnemy(attack, enemy)
         enemy_health = 0;
         enemy_state++;
 
-        // Add Case-Switch here to create new enemy states
+        // Increase the state variable to set new enemy finite state if the health bar is depleted 
+        // This sets player hasStaff to false, sets the text on screen indicating phase, and 
+        // resets position of player 
         if (enemy_state == 2)
         {
             hasStaff = false;
@@ -776,7 +795,6 @@ function destroy(attack, hit)
 function collectStaff(player, staff)
 {
     hasStaff = true;
-    // staff.disableBody(true, true);
     staff.destroy();
 }
 
@@ -791,6 +809,8 @@ function collectShield(shield)
 
 /**
 * Parry function for stage 2. Send enemyAttack back to enemy.
+* tempPoint is gathering the position of where the enemy_attack
+* landing on shield to then shoot it back from that location
 */
 function parry(enemy_attack, shield)
 {   
@@ -826,6 +846,8 @@ function parry(enemy_attack, shield)
 
 /**
  * Parry the enemy's attack to cause damage. Parry Damage only allowed on stage 2
+ * Sets new stage (stage 3) after parrying damage has done 6 damage to the enemy.
+ * Health is depleted at different rate for parry damage. 
  */
 function parryDamage(enemy_attack, enemy)
 {
